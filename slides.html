@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radar de Débitos Técnicos — Briefing</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #0d1220;
+    --bg2:     #121826;
+    --bg3:     #1a2235;
+    --border:  #2a3550;
+    --text:    #e8edf5;
+    --muted:   #8395b0;
+    --primary: #007bff;
+    --red:     #f85149;
+    --yellow:  #f0a500;
+    --green:   #28c76f;
+    --orange:  #ff7b2e;
+    --purple:  #9f7aea;
+  }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    height: 100vh; overflow: hidden; user-select: none;
+  }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 56px 80px; text-align: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  /* nav */
+  .nav {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 14px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 32px; padding: 8px 18px; z-index: 100;
+    font-size: 15px; color: var(--muted);
+  }
+  .nav button {
+    background: none; border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 5px 14px; cursor: pointer; font-size: 15px;
+    transition: background 0.15s;
+  }
+  .nav button:hover { background: var(--bg3); }
+  .nav button:disabled { opacity: 0.3; cursor: default; }
+  #progress { width: 100px; height: 3px; background: var(--border); border-radius: 2px; }
+  #progress-bar { height: 100%; background: var(--primary); border-radius: 2px; transition: width 0.3s; }
+  .slide-num { position: fixed; top: 18px; right: 24px; font-size: 16px; color: var(--muted); font-family: Consolas, monospace; }
+
+  /* typography */
+  .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--primary); margin-bottom: 12px; }
+  h1 { font-size: clamp(38px,5.5vw,68px); font-weight: 800; line-height: 1.1; }
+  h2 { font-size: clamp(26px,3.8vw,44px); font-weight: 700; line-height: 1.2; }
+  h3 { font-size: 20px; font-weight: 600; }
+  p, li { font-size: clamp(14px,1.7vw,18px); line-height: 1.7; color: var(--muted); }
+  strong { color: var(--text); }
+  code { font-family: Consolas,'Fira Code',monospace; font-size: .88em; background: var(--bg3); border-radius: 4px; padding: 1px 6px; color: var(--text); }
+  .accent { color: var(--primary); }
+  .red    { color: var(--red); }
+  .green  { color: var(--green); }
+  .yellow { color: var(--yellow); }
+  .orange { color: var(--orange); }
+  .divider { width: 44px; height: 3px; background: var(--primary); border-radius: 2px; margin: 14px auto; }
+
+  /* layout */
+  .cols   { display: grid; gap: 18px; width: 100%; max-width: 960px; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  /* card */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: left; }
+  .card h3 { margin-bottom: 8px; }
+
+  /* code block */
+  pre {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 20px; font-family: Consolas,'Fira Code',monospace;
+    font-size: clamp(11px,1.3vw,14px); color: var(--text);
+    width: 100%; max-width: 860px; line-height: 1.6; text-align: left;
+  }
+  pre .c  { color: #8395b0; }
+  pre .k  { color: #ff7b72; }
+  pre .s  { color: #79c0ff; }
+  pre .g  { color: #3fb950; }
+  pre .r  { color: #f85149; }
+
+  /* table */
+  table { width: 100%; max-width: 860px; border-collapse: collapse; font-size: 16px; text-align: left; }
+  th { padding: 8px 12px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg3); }
+
+  /* tag */
+  .tag { font-size: 13px; font-weight: 700; padding: 3px 9px; border-radius: 14px; border: 1px solid; display: inline-block; }
+  .tag-red    { color: var(--red);     border-color: var(--red);     background: #f8514918; }
+  .tag-yellow { color: var(--yellow);  border-color: var(--yellow);  background: #f0a50018; }
+  .tag-green  { color: var(--green);   border-color: var(--green);   background: #28c76f18; }
+  .tag-blue   { color: var(--primary); border-color: var(--primary); background: #007bff18; }
+  .tag-purple { color: var(--purple);  border-color: var(--purple);  background: #9f7aea18; }
+
+  /* hbox */
+  .hbox { background: #007bff10; border: 1px solid #0056b3; border-left: 4px solid var(--primary); border-radius: 8px; padding: 13px 17px; max-width: 860px; width: 100%; text-align: left; margin-top: 14px; }
+  .hbox.warn   { background: #f0a50010; border-color: var(--yellow); border-left-color: var(--yellow); }
+  .hbox.danger { background: #f8514910; border-color: var(--red);    border-left-color: var(--red); }
+
+  /* steps */
+  .steps { display: flex; align-items: center; gap: 0; width: 100%; max-width: 900px; margin-top: 18px; }
+  .step  { flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 14px; text-align: center; }
+  .step-num { width: 34px; height: 34px; border-radius: 50%; background: var(--primary); color: white; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; }
+  .step h3 { font-size: 16px; margin-bottom: 5px; }
+  .step p  { font-size: 16px; }
+  .step-arrow { font-size: 25px; color: var(--border); flex-shrink: 0; padding: 0 6px; margin-top: -12px; }
+  .step-tags  { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 8px; }
+  .stag { font-size: 12px; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: #007bff18; color: var(--primary); border: 1px solid #007bff30; }
+
+  /* list */
+  .list-check { list-style: none; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+  .list-check li::before { content: '✓'; color: var(--green); margin-right: 10px; font-weight: 700; }
+
+  /* section slides */
+  .sec-slide { background: radial-gradient(ellipse at 50% 50%, #0a1830 0%, var(--bg) 70%); }
+
+  /* logo */
+  .logo-sm { width: 160px; margin-bottom: 28px; opacity: 0.9; }
+
+  /* animate logo on s1 */
+  @keyframes sym-in   { 0%{opacity:0;transform:scale(.8) rotate(-8deg)} 60%{opacity:1;transform:scale(1.04) rotate(1deg)} 100%{opacity:1;transform:scale(1) rotate(0)} }
+  @keyframes txt-in   { 0%{opacity:0;transform:translateX(-16px)} 100%{opacity:1;transform:translateX(0)} }
+  @keyframes glow-p   { 0%,100%{filter:drop-shadow(0 0 0px #007bff00)} 50%{filter:drop-shadow(0 0 16px #007bff70)} }
+  @keyframes fade-up  { 0%{opacity:0;transform:translateY(18px)} 100%{opacity:1;transform:translateY(0)} }
+  #s1.active #lsym { transform-origin:35px 30px; animation:sym-in .9s cubic-bezier(.22,1,.36,1) .1s both, glow-p 2.4s ease-in-out 1.1s infinite; }
+  #s1.active #ltxt { animation:txt-in .7s ease-out .8s both; }
+  #s1.active .s1-title { animation:fade-up .8s ease-out 1.0s both; }
+  #s1.active .s1-sub   { animation:fade-up .8s ease-out 1.25s both; }
+</style>
+</head>
+<body>
+<div class="deck">
+
+<!-- ── 1: CAPA ─────────────────────────────────────────────────────────────── -->
+<div class="slide active sec-slide" id="s1">
+  <div style="width:32vw;margin-bottom:32px">
+    <svg viewBox="0 0 240 60" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible">
+      <g id="ltxt"><path fill-rule="evenodd" clip-rule="evenodd" d="M72.5249 32.3913V28.7391H87.2571C88.044 28.7391 88.6123 28.6232 88.9621 28.3913C89.3118 28.1884 89.4866 27.7536 89.4866 27.0869V26.0435C89.4866 25.4348 89.3118 25 88.9621 24.7391C88.6123 24.4782 88.0586 24.3478 87.3009 24.3478H78.0331C76.9548 24.3478 76.0513 24.2464 75.3227 24.0435C74.6233 23.8406 74.0695 23.5362 73.6615 23.1304C73.2244 22.7246 72.9329 22.2174 72.7872 21.6087C72.6123 21 72.5249 20.2753 72.5249 19.4348V18.4782C72.5249 17.4927 72.6269 16.6522 72.8309 15.9565C73.0641 15.2608 73.3992 14.6956 73.8364 14.2608C74.2735 13.8551 74.8418 13.5507 75.5413 13.3478C76.2408 13.1449 77.0714 13.0435 78.0331 13.0435H84.0659V16.6956H78.4265C77.7562 16.6956 77.2754 16.8261 76.9839 17.0869C76.6633 17.3478 76.503 17.8551 76.503 18.6087V19.2608C76.503 19.8695 76.6488 20.2898 76.9402 20.5217C77.2025 20.7826 77.6979 20.913 78.4265 20.913H87.5194C88.5978 20.913 89.5158 21 90.2735 21.1739C91.0021 21.3768 91.6142 21.6666 92.1096 22.0435C92.5759 22.4493 92.9111 22.9565 93.1151 23.5652C93.3191 24.2029 93.4211 24.9565 93.4211 25.8261V27.3478C93.4211 28.2753 93.3191 29.0435 93.1151 29.6522C92.9111 30.2898 92.5759 30.8116 92.1096 31.2174C91.6142 31.6232 91.0021 31.913 90.2735 32.0869C89.5158 32.2898 88.5978 32.3913 87.5194 32.3913H72.5249ZM103.432 32.3913C102.004 32.3913 100.809 32.2753 99.8473 32.0435C98.9147 31.7826 98.157 31.3913 97.5741 30.8695C96.9912 30.3768 96.5832 29.6956 96.35 28.8261C96.1169 27.9855 96.0003 26.9565 96.0003 25.7391V19.6522C96.0003 18.4637 96.1169 17.4348 96.35 16.5652C96.5832 15.7246 96.9912 15.0435 97.5741 14.5217C98.157 14 98.9147 13.6232 99.8473 13.3913C100.809 13.1594 102.004 13.0435 103.432 13.0435H110.82C112.248 13.0435 113.443 13.1594 114.405 13.3913C115.337 13.6232 116.095 14 116.678 14.5217C117.261 15.0435 117.669 15.7246 117.902 16.5652C118.135 17.4348 118.252 18.4637 118.252 19.6522V25.7391C118.252 26.9565 118.135 27.9855 117.902 28.8261C117.669 29.6956 117.261 30.3768 116.678 30.8695C116.095 31.3913 115.337 31.7826 114.405 32.0435C113.443 32.2753 112.248 32.3913 110.82 32.3913H103.432ZM113.924 19.8695C113.924 19.2608 113.866 18.7536 113.749 18.3478C113.632 17.971 113.458 17.6522 113.224 17.3913C112.991 17.1594 112.656 17 112.219 16.913C111.782 16.7971 111.257 16.7391 110.645 16.7391H103.607C102.937 16.7391 102.383 16.7971 101.946 16.913C101.509 17 101.173 17.1594 100.94 17.3913C100.678 17.6522 100.503 17.971 100.416 18.3478C100.357 18.7536 100.328 19.2608 100.328 19.8695V25.5652C100.328 26.2029 100.357 26.7246 100.416 27.1304C100.503 27.5362 100.678 27.8551 100.94 28.0869C101.173 28.3188 101.509 28.4782 101.946 28.5652C102.383 28.6522 102.937 28.6956 103.607 28.6956H110.645C111.257 28.6956 111.782 28.6522 112.219 28.5652C112.656 28.4782 112.991 28.3188 113.224 28.0869C113.458 27.8551 113.632 27.5362 113.749 27.1304C113.866 26.7246 113.924 26.2029 113.924 25.5652V19.8695ZM128.787 32.3913C127.359 32.3913 126.179 32.2753 125.246 32.0435C124.284 31.7826 123.512 31.4058 122.929 30.913C122.376 30.3913 121.982 29.7101 121.749 28.8695C121.516 28.029 121.399 26.9855 121.399 25.7391V13.0435H125.683V25.5652C125.683 26.1449 125.742 26.6232 125.858 27C125.946 27.4058 126.121 27.7246 126.383 27.9565C126.645 28.2174 127.009 28.4058 127.476 28.5217C127.913 28.6377 128.481 28.6956 129.181 28.6956H140.722V32.3913H128.787ZM150.295 32.3913C148.867 32.3913 147.672 32.2753 146.711 32.0435C145.749 31.7826 144.991 31.4058 144.437 30.913C143.855 30.3913 143.447 29.7101 143.213 28.8695C142.98 28.029 142.864 26.9855 142.864 25.7391V13.0435H147.235V25.6087C147.235 26.2174 147.294 26.7101 147.41 27.0869C147.527 27.4927 147.716 27.8116 147.978 28.0435C148.27 28.2753 148.634 28.4493 149.071 28.5652C149.509 28.6522 150.048 28.6956 150.689 28.6956H157.246C157.887 28.6956 158.427 28.6522 158.864 28.5652C159.33 28.4493 159.694 28.2753 159.957 28.0435C160.219 27.8116 160.408 27.4927 160.525 27.0869C160.641 26.6811 160.7 26.1739 160.7 25.5652V13.0435H165.028V25.7391C165.028 26.9855 164.911 28.029 164.678 28.8695C164.416 29.7101 164.008 30.3913 163.454 30.913C162.871 31.4058 162.113 31.7826 161.181 32.0435C160.219 32.2753 159.024 32.3913 157.596 32.3913H150.295ZM175.519 32.3913C174.121 32.3913 172.94 32.2753 171.978 32.0435C171.017 31.7826 170.259 31.4058 169.705 30.913C169.122 30.3913 168.714 29.7101 168.481 28.8695C168.248 28.029 168.131 26.9855 168.131 25.7391V19.6956C168.131 18.4782 168.248 17.4348 168.481 16.5652C168.714 15.7246 169.122 15.0435 169.705 14.5217C170.259 14 171.017 13.6232 171.978 13.3913C172.94 13.1594 174.121 13.0435 175.519 13.0435H180.328V16.6956H175.519C174.907 16.6956 174.397 16.7536 173.989 16.8695C173.611 16.9565 173.29 17.1159 173.028 17.3478C172.794 17.5797 172.634 17.884 172.547 18.2608C172.459 18.6377 172.416 19.1159 172.416 19.6956V21H188.984V24.4348H172.416V25.7826C172.416 26.3623 172.459 26.8406 172.547 27.2174C172.634 27.5942 172.794 27.8985 173.028 28.1304C173.261 28.3623 173.581 28.5217 173.989 28.6087C174.397 28.6956 174.907 28.7391 175.519 28.7391H189.115V32.3913H175.519ZM205.465 30.9565C205.086 31.5362 204.678 31.9855 204.241 32.3043C203.774 32.6522 203.119 32.8261 202.274 32.8261C201.399 32.8261 200.743 32.6522 200.306 32.3043C199.84 31.9855 199.432 31.5362 199.082 30.9565L187.891 13.0435H193.137L202.361 28L211.541 13.0435H216.7L205.465 30.9565ZM224.743 32.3913C223.315 32.3913 222.135 32.2608 221.202 32C220.241 31.7681 219.483 31.3913 218.929 30.8695C218.346 30.3478 217.938 29.6666 217.705 28.8261C217.472 27.9855 217.356 26.9565 217.356 25.7391V19.6522C217.356 18.4637 217.472 17.4348 217.705 16.5652C217.938 15.7246 218.346 15.0435 218.929 14.5217C219.483 14 220.241 13.6232 221.202 13.3913C222.135 13.1594 223.315 13.0435 224.743 13.0435H232.131C233.589 13.0435 234.784 13.1594 235.716 13.3913C236.678 13.6232 237.45 14 238.033 14.5217C238.587 15.0435 238.98 15.7246 239.213 16.5652C239.476 17.4348 239.607 18.4637 239.607 19.6522V25.7391C239.607 26.9565 239.476 27.9855 239.213 28.8261C238.98 29.6666 238.587 30.3478 238.033 30.8695C237.45 31.3913 236.678 31.7681 235.716 32C234.784 32.2608 233.589 32.3913 232.131 32.3913H224.743ZM235.235 19.8695C235.235 19.2608 235.192 18.7536 235.104 18.3478C234.988 17.971 234.813 17.6522 234.58 17.3913C234.317 17.1594 233.982 16.9855 233.574 16.8695C233.137 16.7826 232.598 16.7391 231.957 16.7391H224.962C224.263 16.7391 223.709 16.7826 223.301 16.8695C222.864 16.9855 222.529 17.1594 222.295 17.3913C222.033 17.6522 221.858 17.971 221.771 18.3478C221.683 18.7536 221.64 19.2608 221.64 19.8695V25.5652C221.64 26.2029 221.683 26.7246 221.771 27.1304C221.858 27.5362 222.033 27.8551 222.295 28.0869C222.529 28.3188 222.864 28.4782 223.301 28.5652C223.709 28.6522 224.263 28.6956 224.962 28.6956H231.957C232.598 28.6956 233.137 28.6522 233.574 28.5652C233.982 28.4782 234.317 28.3188 234.58 28.0869C234.813 27.8551 234.988 27.5362 235.104 27.1304C235.192 26.7246 235.235 26.2029 235.235 25.5652V19.8695ZM73.2244 43.5652C73.7052 44.0435 74.2735 44.2174 74.7981 44.2174C75.3227 44.2174 75.7599 44 75.7599 43.6522C75.7599 42.6956 72.5686 43.4348 72.5686 41.5217C72.5686 40.4348 73.4429 39.913 74.4921 39.913C75.1479 39.913 75.8473 40.1304 76.4593 40.5652L75.8036 41.3478C75.4976 41.0869 74.9293 40.913 74.4921 40.913C74.055 40.913 73.7052 41.0869 73.7052 41.4348C73.7052 42.4348 76.8528 41.5652 76.8528 43.6087C76.8528 44.5652 75.9347 45.2608 74.7981 45.2608C74.0987 45.2608 73.2681 44.9565 72.5249 44.3043L73.2244 43.5652ZM83.9785 39.9565C85.6397 39.9565 86.7326 41.1739 86.7326 42.6087C86.7326 44.1739 85.5085 45.2608 83.9785 45.2608C82.361 45.2608 81.2681 44.0869 81.2681 42.6087C81.2681 41.0869 82.4484 39.9565 83.9785 39.9565ZM83.9785 44.2608C84.9839 44.2608 85.5522 43.5217 85.5522 42.6087C85.5522 41.6087 84.8965 40.9565 83.9785 40.9565C83.0167 40.9565 82.4047 41.6956 82.4047 42.6087C82.4047 43.5217 83.0604 44.2608 83.9785 44.2608ZM92.4593 39.913V44.2608H95.0823V45.2608H91.3227V39.913H92.4593ZM104.088 39.913V42.8261C104.088 44.2174 103.213 45.2608 101.771 45.2608C100.372 45.2608 99.4539 44.2174 99.4539 42.8261V39.913H100.59V42.7826C100.59 43.4782 100.94 44.2608 101.771 44.2608C102.558 44.2608 102.995 43.5652 102.995 42.7826V39.913H104.088ZM121.006 39.9565C122.623 39.9565 123.76 41.1739 123.76 42.6087C123.76 44.1739 122.492 45.2608 121.006 45.2608C119.388 45.2608 118.295 44.0869 118.295 42.6087C118.295 41.0869 119.476 39.9565 121.006 39.9565ZM121.006 44.2608C122.011 44.2608 122.58 43.5217 122.58 42.6087C122.58 41.6087 121.924 40.9565 121.006 40.9565C120.044 40.9565 119.432 41.6956 119.432 42.6087C119.432 43.5217 120.044 44.2608 121.006 44.2608ZM132.11 39.9565V41H129.487V41.8695H131.454V42.913H129.487V44.2608H132.11V45.3043H128.35V39.9565H132.11ZM151.957 40V41H149.29V41.8695H151.257V42.913H149.29V44.3043H151.957V45.3043H148.197V40H151.957ZM181.071 39.9565C182.733 39.9565 183.825 41.1739 183.825 42.6087C183.825 44.2174 182.601 45.3043 181.071 45.3043C179.454 45.3043 178.361 44.0869 178.361 42.6087C178.361 41.0869 179.585 39.9565 181.071 39.9565ZM181.071 44.3043C182.077 44.3043 182.645 43.5217 182.645 42.6087C182.645 41.6522 181.989 40.9565 181.071 40.9565C180.11 40.9565 179.541 41.7391 179.541 42.6087C179.541 43.5217 180.153 44.3043 181.071 44.3043ZM239.563 39.9565V41H236.94V41.8695H238.907V42.8695H236.94V44.2608H239.563V45.3043H235.804V39.9565H239.563Z" fill="white"/></g>
+      <g id="lsym"><path fill-rule="evenodd" clip-rule="evenodd" d="M28.503 3.47822C33.0494 2.26083 37.5959 2.26083 41.88 3.26083C49.7489 -1.73917 60.3718 -0.956565 67.4101 5.73909L70.951 9.13039C71.0385 9.13039 71.1259 9.13039 71.2133 9.13039L68.7215 11.6521V11.4782L65.1806 8.08691C59.9784 3.08691 52.4155 1.99996 46.1642 4.60865C45.319 4.95648 44.503 5.37677 43.7161 5.86952L43.4975 6.04344H43.4538L43.4101 6.08691C42.3317 6.78257 41.3263 7.60865 40.3937 8.56517L24.1751 25.3913L21.8582 23.1739L38.0767 6.34778C38.1642 6.23184 38.2662 6.13039 38.3827 6.04344C35.4538 5.69561 32.3937 5.913 29.3773 6.69561C16.4811 10.1304 8.83083 23.3043 12.2844 36.1304C13.421 40.3478 15.6505 44.0434 18.5795 46.913C16.5248 47 14.3827 46.3043 12.809 44.7826L12.0658 44.0869C10.7543 41.9565 9.74886 39.5652 9.04941 37C5.11498 22.3913 13.8144 7.39126 28.503 3.47822ZM2.53575 48.1739V48.3478L6.07673 51.7391C11.3226 56.6956 18.8418 57.826 25.0931 55.2174C25.8217 54.8985 26.5358 54.5362 27.2352 54.1304L27.3664 54.0434L27.4101 54L27.4975 53.9565C28.7215 53.2173 29.8582 52.3043 30.8636 51.2608L47.0822 34.4347L49.3991 36.6521L33.1806 53.4782C33.0931 53.5652 32.9911 53.6666 32.8745 53.7826C35.8035 54.1304 38.8636 53.913 41.88 53.1304C54.7762 49.6956 62.4265 36.5217 58.9729 23.6956C57.8363 19.4347 55.6068 15.7826 52.6778 12.8695C54.7325 12.7826 56.8745 13.5217 58.4483 15.0434L59.1915 15.6956C60.503 17.8695 61.5084 20.2608 62.2079 22.826C66.1423 37.4347 57.4429 52.4347 42.7543 56.3478C38.2079 57.5652 33.6614 57.5652 29.3773 56.5652C21.5084 61.5652 10.8855 60.7826 3.84722 54.0434L0.30624 50.6521C0.218809 50.6811 0.131377 50.6956 0.0439453 50.6956L2.53575 48.1739ZM6.99477 43.6956L10.5357 47.0869C14.9073 51.3043 21.9456 51.1304 26.186 46.7826L42.4046 29.9565L44.7215 32.1739L28.503 49C23.0822 54.6521 13.9893 54.826 8.30624 49.4347L4.76526 46.0434H4.63411L6.99477 43.6956ZM66.4483 13.7391H66.5795L64.2188 16.0434L60.6778 12.6521C56.3062 8.47822 49.268 8.60865 45.0276 13L28.809 29.7826L26.492 27.5652L42.7106 10.7826C48.1751 5.13039 57.2243 4.913 62.9073 10.3478L66.4483 13.7391Z" fill="white"/></g>
+    </svg>
+  </div>
+  <div class="s1-title">
+    <div class="eyebrow">Hackathon — Briefing do Dia</div>
+    <h1>Radar de<br><span class="accent">Débitos Técnicos</span></h1>
+  </div>
+  <div class="divider"></div>
+  <p class="s1-sub" style="font-size:20px;max-width:500px">Tudo que você precisa saber para começar.<br>30 minutos. Depois é com vocês.</p>
+</div>
+
+<!-- ── 2: O CONTEXTO ──────────────────────────────────────────────────────── -->
+<div class="slide" id="s2">
+  <div class="eyebrow">O repositório</div>
+  <h2>A empresa: <span class="accent">HourTrack Ltda.</span></h2>
+  <div class="divider"></div>
+  <div class="cols cols-3" style="max-width:880px;margin-top:18px">
+    <div class="card">
+      <div style="font-size:25px;margin-bottom:8px">🏢</div>
+      <h3>A situação</h3>
+      <p style="font-size:15px">47 clientes, R$ 28k MRR. 2 devs — 1 saindo em 6 semanas. Sem staging, sem testes, SQLite em produção.</p>
+    </div>
+    <div class="card" style="border-color:#f8514940">
+      <div style="font-size:25px;margin-bottom:8px">🔴</div>
+      <h3 class="red">14 dias</h3>
+      <p style="font-size:15px">Release v2.1 prometida a 3 clientes — precisa sair no prazo. Não dá para atrasar. Risco de cancelamento.</p>
+    </div>
+    <div class="card" style="border-color:#f0a50040">
+      <div style="font-size:25px;margin-bottom:8px">🟡</div>
+      <h3 class="yellow">30 dias</h3>
+      <p style="font-size:15px">Cliente enterprise pediu questionário de segurança. Se fechar: dobra o MRR.</p>
+    </div>
+  </div>
+  <div class="hbox" style="max-width:880px;margin-top:14px">
+    <p>📄 Leia o <code>business-context.md</code> antes de priorizar. O contexto <strong>muda tudo</strong> no scoring.</p>
+    <p style="margin-top:8px">📋 Os critérios de avaliação com pesos estão em <code>criterios-avaliacao.md</code>. Um <code>criterios-avaliacao.json</code> está disponível para consumo automatizado pelo pipeline.</p>
+  </div>
+</div>
+
+<!-- ── 2b: PLANO DE MELHORIA FUTURO ─────────────────────────────────────── -->
+<div class="slide" id="s2c">
+  <div class="eyebrow">Além do furacão</div>
+  <h2>Como priorizar o que vem <span class="accent">depois</span></h2>
+  <div class="divider"></div>
+  <p style="max-width:700px;margin-bottom:20px">Os prazos críticos (release em 14 dias, questionário em 30) são o furacão. Mas o relatório precisa também responder: <strong>e depois?</strong></p>
+  <div class="cols cols-3" style="max-width:900px">
+    <div class="card" style="border-color:#f0a50040">
+      <div style="font-size:25px;margin-bottom:8px">🌀</div>
+      <h3 class="yellow" style="font-size:16px">Durante o furacão</h3>
+      <p style="font-size:15px">Só o que desbloqueie os 14/30 dias. Segurança crítica + release. Nada mais.</p>
+    </div>
+    <div class="card" style="border-color:#007bff40">
+      <div style="font-size:25px;margin-bottom:8px">🔧</div>
+      <h3 class="accent" style="font-size:16px">Próximas 4–8 semanas</h3>
+      <p style="font-size:15px">Débitos de design e manutenibilidade que travam a próxima feature. Base para o dev novo conseguir trabalhar.</p>
+    </div>
+    <div class="card" style="border-color:#28c76f40">
+      <div style="font-size:25px;margin-bottom:8px">🚀</div>
+      <h3 class="green" style="font-size:16px">Backlog estruturado</h3>
+      <p style="font-size:15px">Performance, refatorações maiores, testes. O que entra no roadmap — não na sprint de emergência.</p>
+    </div>
+  </div>
+  <div class="hbox" style="max-width:900px;margin-top:14px">
+    <p>⭐ Uma boa entrega não termina no furacão — ela apresenta <strong>como priorizar os itens restantes</strong> depois que a crise passa. Isso é o que separa um diagnóstico técnico de um plano de melhoria real.</p>
+  </div>
+</div>
+
+<!-- ── 2b: QUESTIONÁRIO DE SEGURANÇA ─────────────────────────────────────── -->
+<div class="slide" id="s2b">
+  <div class="eyebrow">O que está em jogo</div>
+  <h2>O questionário que pode <span class="red">travar o contrato</span></h2>
+  <div class="divider"></div>
+  <p style="max-width:660px;margin-bottom:20px">A GlobalConsult enviou um questionário de segurança. O time comercial respondeu "Sim" para todas as perguntas. Quando você analisar o código, vai descobrir quantas dessas respostas estão erradas.</p>
+  <div class="cols cols-2" style="max-width:880px">
+    <div>
+      <p style="font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Perguntas que o código <span class="red">não consegue responder "Sim"</span></p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="background:var(--bg2);border:1px solid #f8514940;border-left:3px solid var(--red);border-radius:8px;padding:10px 14px">
+          <p style="font-size:15px"><strong>2.1</strong> O sistema é protegido contra SQL Injection?</p>
+        </div>
+        <div style="background:var(--bg2);border:1px solid #f8514940;border-left:3px solid var(--red);border-radius:8px;padding:10px 14px">
+          <p style="font-size:15px"><strong>2.2</strong> O sistema é protegido contra XSS?</p>
+        </div>
+        <div style="background:var(--bg2);border:1px solid #f8514940;border-left:3px solid var(--red);border-radius:8px;padding:10px 14px">
+          <p style="font-size:15px"><strong>3.3</strong> Credenciais estão fora do repositório Git?</p>
+        </div>
+        <div style="background:var(--bg2);border:1px solid #f8514940;border-left:3px solid var(--red);border-radius:8px;padding:10px 14px">
+          <p style="font-size:15px"><strong>1.1</strong> O sistema exige autenticação para acessar dados de clientes?</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p style="font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">O que isso significa</p>
+      <div class="card" style="margin-bottom:12px">
+        <p style="font-size:15px">A GlobalConsult exige <strong>100% de conformidade na Seção 2 (OWASP)</strong>. Qualquer "Não" bloqueia o contrato.</p>
+      </div>
+      <div class="card" style="border-color:#007bff40">
+        <p style="font-size:15px">Seu relatório precisa responder: <strong>quais perguntas a empresa pode responder "Sim" honestamente hoje — e quais precisam de remediação antes dos 30 dias?</strong></p>
+      </div>
+      <div class="hbox warn" style="margin-top:10px">
+        <p style="font-size:15px">📄 O questionário completo está em <code>security-questionnaire.md</code> no repositório.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 3: DÉBITOS TÉCNICOS ────────────────────────────────────────────────── -->
+<div class="slide" id="s3">
+  <div class="eyebrow">Conceito-chave</div>
+  <h2>Débito Técnico = <span class="red">Dívida com Juros</span></h2>
+  <div class="divider"></div>
+  <div class="cols cols-2" style="max-width:860px;margin-top:18px">
+    <div style="text-align:left">
+      <p style="font-size:18px;margin-bottom:12px">Cada atalho tomado hoje vira custo amanhã. A produtividade cai enquanto o código se degrada — até o temido <strong>grand redesign</strong>.</p>
+      <p style="font-size:18px;margin-bottom:12px"><em>"The only way to go fast is to go well."</em> — Robert C. Martin</p>
+      <p style="font-size:18px">Identificar e priorizar é o que separa quem <strong>entrega</strong> de quem apenas <strong>apaga incêndio</strong>.</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;background:var(--bg2);border-radius:10px;border:1px solid var(--border);padding:6px">
+        <line x1="35" y1="180" x2="305" y2="180" stroke="#2a3550" stroke-width="1.5"/>
+        <line x1="35" y1="180" x2="35"  y2="20"  stroke="#2a3550" stroke-width="1.5"/>
+        <text x="170" y="196" fill="#8395b0" font-size="10" text-anchor="middle" font-family="Segoe UI,sans-serif">Tempo</text>
+        <text x="13" y="105" fill="#8395b0" font-size="10" text-anchor="middle" font-family="Segoe UI,sans-serif" transform="rotate(-90,13,105)">Produtividade</text>
+        <path d="M45,28 C85,30 145,32 205,36 C250,40 280,46 300,54" fill="none" stroke="#28c76f" stroke-width="2.5"/>
+        <path d="M45,28 C85,32 120,55 160,95 C200,135 250,165 300,178" fill="none" stroke="#f85149" stroke-width="2.5"/>
+        <path d="M45,28 C85,32 120,55 160,95 C200,135 250,165 300,178 L300,54 C280,46 250,40 205,36 C145,32 85,30 45,28Z" fill="#f8514914"/>
+        <text x="42" y="18" fill="#8395b0" font-size="8" font-family="Segoe UI,sans-serif">sem design</text><line x1="38" y1="16" x2="52" y2="16" stroke="#f85149" stroke-width="1.5"/>
+        <text x="130" y="18" fill="#8395b0" font-size="8" font-family="Segoe UI,sans-serif">com design</text><line x1="125" y1="16" x2="139" y2="16" stroke="#28c76f" stroke-width="1.5"/>
+        <line x1="250" y1="172" x2="250" y2="155" stroke="#f0a500" stroke-width="1.5" stroke-dasharray="3,2"/>
+        <text x="250" y="150" fill="#f0a500" font-size="8" text-anchor="middle" font-family="Segoe UI,sans-serif">grand redesign</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ── 4: CATEGORIAS ──────────────────────────────────────────────────────── -->
+<div class="slide" id="s4">
+  <div class="eyebrow">O que você vai encontrar</div>
+  <h2>Categorias de <span class="accent">Code Smells</span></h2>
+  <div class="divider"></div>
+  <div class="cols cols-4" style="max-width:900px;margin-top:18px">
+    <div class="card" style="text-align:center;padding:16px">
+      <div style="font-size:30px;margin-bottom:8px">🔐</div>
+      <h3 class="red" style="font-size:16px">Segurança</h3>
+      <p style="font-size:14px">SQL injection, XSS, senhas hardcoded, sem auth</p>
+      <div style="margin-top:10px"><span class="tag tag-red">Alta prioridade</span></div>
+    </div>
+    <div class="card" style="text-align:center;padding:16px">
+      <div style="font-size:30px;margin-bottom:8px">🏗️</div>
+      <h3 class="accent" style="font-size:16px">Design (SOLID)</h3>
+      <p style="font-size:14px">God Class, acoplamento alto, SRP/OCP violados</p>
+      <div style="margin-top:10px"><span class="tag tag-blue">Média-Alta</span></div>
+    </div>
+    <div class="card" style="text-align:center;padding:16px">
+      <div style="font-size:30px;margin-bottom:8px">⚙️</div>
+      <h3 class="yellow" style="font-size:16px">Manutenibilidade</h3>
+      <p style="font-size:14px">Zero testes, dead code, duplicação, sem logging</p>
+      <div style="margin-top:10px"><span class="tag tag-yellow">Média</span></div>
+    </div>
+    <div class="card" style="text-align:center;padding:16px">
+      <div style="font-size:30px;margin-bottom:8px">🐢</div>
+      <h3 class="orange" style="font-size:16px">Performance</h3>
+      <p style="font-size:14px">N+1 queries, SELECT *, sem índices, sem paginação</p>
+      <div style="margin-top:10px"><span class="tag tag-yellow">Média-Baixa</span></div>
+    </div>
+  </div>
+  <div class="hbox" style="max-width:900px;margin-top:14px">
+    <p>⚡ <strong>Security smells</strong> são smells com impacto direto de negócio — não apenas manutenibilidade. Dado o questionário de segurança em 30 dias, pesam mais no scoring.</p>
+  </div>
+</div>
+
+<!-- ── 5: MÉTRICAS ────────────────────────────────────────────────────────── -->
+<div class="slide" id="s5">
+  <div class="eyebrow">O que as ferramentas medem</div>
+  <h2>Métricas de <span class="accent">qualidade de código</span></h2>
+  <div class="divider"></div>
+  <table style="margin-top:16px">
+    <thead><tr><th>Métrica</th><th>O que mede</th><th>Sinal de problema</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Complexidade Ciclomática (CC)</strong></td><td>Caminhos independentes numa função</td><td>CC &gt; 10 → refatorar; CC &gt; 25 → reescrita</td></tr>
+      <tr><td><strong>Maintainability Index (MI)</strong></td><td>Score 0–100 de manutenibilidade geral</td><td>MI &lt; 65 → atenção</td></tr>
+      <tr><td><strong>Acoplamento (CBO/Ce/Ca)</strong></td><td>Dependências entre classes</td><td>Alto acoplamento = difícil de mudar</td></tr>
+      <tr><td><strong>Coesão (LCOM)</strong></td><td>Se métodos usam os mesmos atributos</td><td>LCOM alto = God Class</td></tr>
+      <tr><td><strong>LOC / LLOC</strong></td><td>Linhas de código total e lógico</td><td>Volume absoluto — contexto para outros</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:12px;font-size:15px;color:var(--muted)">Você não precisa decorar — as ferramentas calculam automaticamente. Seu trabalho é <strong>interpretar os números</strong>.</p>
+</div>
+
+<!-- ── 6: FERRAMENTAS ─────────────────────────────────────────────────────── -->
+<div class="slide" id="s6">
+  <div class="eyebrow">Container já configurado</div>
+  <h2>As <span class="accent">ferramentas</span> no desafio</h2>
+  <div class="divider"></div>
+  <table style="margin-top:16px">
+    <thead><tr><th>Ferramenta</th><th>Lang</th><th>Detecta</th><th>Output</th></tr></thead>
+    <tbody>
+      <tr><td><strong>bandit</strong></td><td>Python</td><td>Vulnerabilidades de segurança (SQL injection, MD5, hardcoded secrets)</td><td><span class="tag tag-green">JSON</span></td></tr>
+      <tr><td><strong>radon cc</strong></td><td>Python</td><td>Complexidade Ciclomática por função + Maintainability Index</td><td><span class="tag tag-green">JSON</span></td></tr>
+      <tr><td><strong>pylint</strong></td><td>Python</td><td>Dead code, duplicação, smells gerais</td><td><span class="tag tag-green">JSON</span></td></tr>
+      <tr><td><strong>semgrep</strong></td><td>Python + PHP</td><td>OWASP Top 10 — mesmas regras, mesmo schema JSON nas duas linguagens</td><td><span class="tag tag-green">JSON</span></td></tr>
+      <tr><td><strong>phpstan + phpmetrics</strong></td><td>PHP (bônus)</td><td>Análise estática + CC por classe, acoplamento, coesão</td><td><span class="tag tag-green">JSON</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── 7: O QUE ESPERAMOS DA ENTREGA ─────────────────────────────────────── -->
+<div class="slide" id="s7new">
+  <div class="eyebrow">O que esperamos</div>
+  <h2>O que é uma <span class="accent">boa entrega</span></h2>
+  <div class="divider"></div>
+  <div class="cols cols-2" style="max-width:900px;margin-top:18px">
+    <div>
+      <h3 style="margin-bottom:14px;color:var(--green)">✓ O que queremos ver</h3>
+      <ul class="list-check" style="font-size:16px">
+        <li>Débitos com evidência: arquivo, linha, trecho de código</li>
+        <li>Priorização justificada pelo contexto de negócio — não apenas pela severidade técnica</li>
+        <li>Pipeline que roda sem erros e gera JSON + Markdown válidos</li>
+        <li>Scoring determinístico com regras documentadas</li>
+        <li>Uma seção auditando onde a IA errou</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="margin-bottom:14px;color:var(--red)">✗ O que penaliza</h3>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:10px;font-size:16px">
+        <li style="display:flex;gap:10px"><span style="color:var(--red);font-weight:700">→</span><span>Falso positivo: problema reportado que não existe no código</span></li>
+        <li style="display:flex;gap:10px"><span style="color:var(--red);font-weight:700">→</span><span>Scoring não-determinístico</span></li>
+        <li style="display:flex;gap:10px"><span style="color:var(--red);font-weight:700">→</span><span>Dump bruto das ferramentas sem normalização</span></li>
+        <li style="display:flex;gap:10px"><span style="color:var(--red);font-weight:700">→</span><span>Prioridade calculada só por LLM, sem scoring model</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="hbox" style="max-width:900px;margin-top:14px">
+    <p>📋 Os critérios completos de avaliação com pesos estão no <code>criterios-avaliacao.md</code> — e há um JSON com os pontos disponível para consumo automatizado.</p>
+  </div>
+</div>
+
+<!-- ── 8: O PIPELINE ─────────────────────────────────────────────────────── -->
+<div class="slide" id="s8">
+  <div class="eyebrow">O pipeline de análise</div>
+  <h2>O pipeline: <span class="accent">repo entra, relatório sai</span></h2>
+  <div class="divider"></div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Detectar</h3>
+      <p>Executar ferramentas via <code>subprocess</code></p>
+      <div class="step-tags"><span class="stag">bandit</span><span class="stag">radon</span><span class="stag">pylint</span></div>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Normalizar</h3>
+      <p>Converter JSONs num <code>Finding</code> unificado</p>
+      <div class="step-tags"><span class="stag">deduplicar</span></div>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step" style="border-color:#007bff50">
+      <div class="step-num" style="background:var(--green)">3</div>
+      <h3 class="green">Priorizar</h3>
+      <p>Scoring <strong>determinístico</strong> + Gemini para descrições</p>
+      <div class="step-tags"><span class="stag" style="color:var(--green);border-color:#28c76f40;background:#28c76f14">scoring.py</span></div>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <h3>Reportar</h3>
+      <p>Relatório final em <code>JSON</code> + <code>Markdown</code></p>
+      <div class="step-tags"><span class="stag">report.py</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 9: SCORING MODEL ───────────────────────────────────────────────────── -->
+<div class="slide" id="s9">
+  <div class="eyebrow">O coração do desafio</div>
+  <h2>O scoring model <span class="accent">determinístico</span></h2>
+  <div class="divider"></div>
+  <div class="cols cols-2" style="max-width:900px;margin-top:16px">
+    <div>
+      <p style="font-size:17px;margin-bottom:14px">A prioridade deve ser <strong>calculada por regras explícitas</strong> — não por LLM. Rodado duas vezes no mesmo repositório: mesmo resultado.</p>
+      <p style="font-size:17px;margin-bottom:14px">Critérios a considerar:</p>
+      <ul class="list-check" style="font-size:16px">
+        <li>Severidade base do achado (Crítica=100, Alta=70...)</li>
+        <li>Achado de segurança + questionário em 30 dias → <strong>multiplicador</strong></li>
+        <li>Alto esforço + release em 14 dias → <strong>penalidade</strong></li>
+        <li>Risco de perder cliente enterprise → amplifica acesso a dados</li>
+      </ul>
+    </div>
+    <pre style="font-size:13px;padding:14px"><span class="k">def</span> <span class="g">score</span>(finding, ctx):
+    base = SEVERITY_MAP[finding.severity]
+
+    <span class="c"># segurança + auditoria próxima</span>
+    <span class="k">if</span> ctx.days_until_audit &lt;= <span class="g">30</span>:
+        <span class="k">if</span> finding.category == <span class="s">"security"</span>:
+            base *= <span class="g">2.0</span>
+
+    <span class="c"># alto esforço + release próxima</span>
+    <span class="k">if</span> ctx.days_until_release &lt;= <span class="g">14</span>:
+        <span class="k">if</span> finding.effort > <span class="g">8</span>:
+            base *= <span class="g">0.5</span>
+
+    <span class="k">return</span> Priority.from_score(base)</pre>
+  </div>
+  <div class="hbox danger" style="max-width:900px;margin-top:14px">
+    <p>⛔ Scoring não-determinístico (resultado diferente entre execuções) = <strong>desclassificado como entrega técnica.</strong></p>
+  </div>
+</div>
+
+<!-- ── 10: IA NO PIPELINE ────────────────────────────────────────────────── -->
+<div class="slide" id="s10">
+  <div class="eyebrow">IA no pipeline</div>
+  <h2>Gemini para <span class="accent">enriquecer</span> — não para decidir</h2>
+  <div class="divider"></div>
+  <div class="cols cols-2" style="max-width:880px;margin-top:16px">
+    <div>
+      <p style="font-size:17px;margin-bottom:14px">O Gemini (API grátis) enriquece o campo <strong>Impacto</strong> em linguagem de negócio. A detecção e a prioridade vêm das ferramentas e do scoring model.</p>
+      <div class="hbox" style="margin-top:0">
+        <p style="font-size:15px"><strong>Setup:</strong> crie conta em <a href="https://aistudio.google.com" target="_blank" style="color:var(--primary)">aistudio.google.com</a> → Get API key → <code>export GOOGLE_API_KEY=...</code></p>
+      </div>
+    </div>
+    <pre style="font-size:13px;padding:14px"><span class="k">import</span> google.generativeai <span class="k">as</span> genai
+
+genai.configure(api_key=os.environ[<span class="s">"GOOGLE_API_KEY"</span>])
+model = genai.GenerativeModel(<span class="s">"gemini-1.5-flash"</span>)
+
+<span class="k">def</span> <span class="g">enrich_impact</span>(finding, ctx):
+    prompt = <span class="s">f"""
+    Empresa: {ctx.name}, {ctx.mrr} MRR.
+    Achado: {finding.description}
+    Escreva em 1-2 frases o impacto de negócio.
+    """</span>
+    <span class="k">return</span> model.generate_content(prompt).text</pre>
+  </div>
+  <div class="hbox warn" style="max-width:880px;margin-top:14px">
+    <p>⚠️ A IA erra — ela inventa problemas e deixa passar outros. <strong>Validar o output da IA vale pontos no critério de avaliação.</strong></p>
+  </div>
+</div>
+
+<!-- ── 11: AS ENTREGAS ────────────────────────────────────────────────────── -->
+<div class="slide" id="s11">
+  <div class="eyebrow">O que entregar</div>
+  <h2>Duas entregas <span class="accent">obrigatórias</span> + bônus</h2>
+  <div class="divider"></div>
+  <div class="cols cols-3" style="max-width:880px;margin-top:18px">
+    <div class="card">
+      <h3 style="margin-bottom:10px">📄 Relatório</h3>
+      <p style="font-size:15px;margin-bottom:10px">Análise manual do <code>bad-codebase-python</code> com priorização justificada.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="tag tag-blue">ID</span><span class="tag tag-blue">Categoria</span><span class="tag tag-blue">Impacto</span><span class="tag tag-blue">Risco</span><span class="tag tag-blue">Esforço</span><span class="tag tag-blue">Prioridade</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:10px">⚙️ Pipeline</h3>
+      <p style="font-size:15px;margin-bottom:10px">Código Python que gera o relatório automaticamente.</p>
+      <ul class="list-check" style="font-size:15px">
+        <li>Roda as ferramentas</li>
+        <li>Normaliza os achados</li>
+        <li>Aplica scoring determinístico</li>
+        <li>Gera JSON + Markdown</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:#9f7aea40">
+      <h3 class="purple" style="margin-bottom:10px">⭐ Bônus — PHP</h3>
+      <p style="font-size:15px;margin-bottom:10px">Estenda o pipeline para suportar o <code>bad-codebase</code> (PHP/Laravel).</p>
+      <p style="font-size:14px;color:var(--muted)">O mesmo scoring model, o mesmo formato de relatório. Dois repos, um pipeline.</p>
+    </div>
+  </div>
+  <div class="hbox" style="max-width:880px;margin-top:14px">
+    <p>📦 Entregar: relatório (Markdown/PDF) + repositório do pipeline (GitHub/ZIP) + README com instruções</p>
+  </div>
+</div>
+
+<!-- ── 12: CRITÉRIOS ─────────────────────────────────────────────────────── -->
+<div class="slide" id="s12">
+  <div class="eyebrow">Como você será avaliado</div>
+  <h2>Critérios de <span class="accent">avaliação</span></h2>
+  <div class="divider"></div>
+  <table style="margin-top:16px">
+    <thead><tr><th>Critério</th><th>Peso</th><th>O que avaliamos</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Qualidade do Relatório</strong></td><td><span class="accent" style="font-weight:700">30%</span></td><td>Completude e clareza das descrições de impacto de negócio</td></tr>
+      <tr><td><strong>Pipeline funcional</strong></td><td><span class="accent" style="font-weight:700">25%</span></td><td>Detecta achados reais, gera output válido sem erros</td></tr>
+      <tr><td><strong>Scoring model</strong></td><td><span class="accent" style="font-weight:700">25%</span></td><td>Regras explícitas, determinísticas, justificadas pelo contexto</td></tr>
+      <tr><td><strong>Qualidade do código</strong></td><td><span class="accent" style="font-weight:700">10%</span></td><td>Estrutura, testes do scoring, legibilidade</td></tr>
+      <tr><td><strong>Bônus: PHP</strong></td><td><span class="purple" style="font-weight:700">+10%</span></td><td>Pipeline roda nos dois repos com comparação</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── 13: REGRAS E PENALIDADES ──────────────────────────────────────────── -->
+<div class="slide" id="s13">
+  <div class="eyebrow">Atenção</div>
+  <h2>Regras e <span class="red">penalidades</span></h2>
+  <div class="divider"></div>
+  <div class="cols cols-2" style="max-width:860px;margin-top:18px">
+    <div>
+      <h3 style="margin-bottom:12px;color:var(--green)">✓ Permitido</h3>
+      <ul class="list-check" style="font-size:16px">
+        <li>Internet e documentação à vontade</li>
+        <li>ChatGPT, Gemini, Copilot, Claude</li>
+        <li>Qualquer biblioteca Python (pip install)</li>
+        <li>Consultar o FERRAMENTAS.md dentro do container</li>
+        <li>Usar IA para enriquecer descrições de impacto</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="margin-bottom:12px;color:var(--red)">✗ Penalizado</h3>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:10px;font-size:16px">
+        <li style="display:flex;gap:10px"><span style="color:var(--red);font-weight:700">→</span><span>Falso positivo no relatório (problema reportado que não existe)</span></li>
+        <li style="display:flex;gap:10px"><span style="color:var(--red);font-weight:700">→</span><span>Scoring não-determinístico = desclassificado como entrega técnica</span></li>
+        <li style="display:flex;gap:10px"><span style="color:var(--red);font-weight:700">→</span><span>Dump bruto das ferramentas sem normalização/priorização</span></li>
+        <li style="display:flex;gap:10px"><span style="color:var(--red);font-weight:700">→</span><span>Prioridade calculada por LLM (sem scoring model)</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ── 14: A PERGUNTA CENTRAL ────────────────────────────────────────────── -->
+<div class="slide" id="s14">
+  <div class="eyebrow">O norte do dia</div>
+  <h2>A pergunta <span class="accent">central</span></h2>
+  <div class="divider"></div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:12px;padding:28px 36px;max-width:720px;text-align:left;margin-top:20px">
+    <p style="font-size:25px;font-style:italic;color:var(--text);line-height:1.6">"Se você fosse o CTO da HourTrack por um dia, o que faria primeiro — e o que deixaria para depois?"</p>
+  </div>
+  <p style="margin-top:20px;font-size:18px;max-width:640px">Não existe resposta certa. Existe resposta <strong>bem justificada</strong> pelo contexto do negócio.<br>O relatório deve responder essa pergunta.</p>
+  <div class="hbox warn" style="max-width:680px;margin-top:14px">
+    <p>⚡ Inclua obrigatoriamente no relatório: <strong>"O que a IA sugeriu que estava errado — e por quê."</strong></p>
+  </div>
+</div>
+
+<!-- ── 15: ENCERRAMENTO ──────────────────────────────────────────────────── -->
+<div class="slide sec-slide" id="s15">
+  <div class="eyebrow" style="color:var(--muted)">Hora de começar</div>
+  <h1 style="margin-bottom:14px">Bora. 🦨</h1>
+  <div class="divider"></div>
+  <p style="font-size:21px;max-width:520px;margin-bottom:28px">O código não vai se refatorar sozinho.<br><strong>Mas agora você sabe onde olhar.</strong></p>
+  <div class="cols cols-3" style="max-width:760px">
+    <div class="card" style="text-align:center">
+      <div style="font-size:23px;margin-bottom:6px">1️⃣</div>
+      <p style="font-size:14px"><code>docker compose up</code><br>no <code>bad-codebase-python</code></p>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:23px;margin-bottom:6px">2️⃣</div>
+      <p style="font-size:14px"><code>docker compose run --rm analyzer bash</code><br>no <code>analyzer-env</code></p>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:23px;margin-bottom:6px">3️⃣</div>
+      <p style="font-size:14px">Leia o <code>business-context.md</code><br>antes de priorizar qualquer coisa</p>
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<div class="nav">
+  <button id="btn-prev" onclick="go(-1)" disabled>← anterior</button>
+  <div id="progress"><div id="progress-bar"></div></div>
+  <button id="btn-next" onclick="go(1)">próximo →</button>
+</div>
+<div class="slide-num" id="slide-num"></div>
+
+<script>
+  // Mermaid para diagrama CC (carrega só se precisar)
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  let cur = 0;
+  function go(dir) {
+    slides[cur].classList.remove('active');
+    cur = Math.max(0, Math.min(slides.length - 1, cur + dir));
+    slides[cur].classList.add('active');
+    update();
+  }
+  function update() {
+    document.getElementById('btn-prev').disabled = cur === 0;
+    document.getElementById('btn-next').disabled = cur === slides.length - 1;
+    document.getElementById('progress-bar').style.width = ((cur + 1) / slides.length * 100) + '%';
+    document.getElementById('slide-num').textContent = (cur + 1) + ' / ' + slides.length;
+  }
+  document.addEventListener('keydown', e => {
+    if (['ArrowRight','ArrowDown',' '].includes(e.key)) { e.preventDefault(); go(1); }
+    if (['ArrowLeft','ArrowUp'].includes(e.key)) { e.preventDefault(); go(-1); }
+  });
+  document.querySelector('.deck').addEventListener('click', e => {
+    if (e.target.closest('.nav')) return;
+    go(1);
+  });
+  update();
+</script>
+</body>
+</html>
